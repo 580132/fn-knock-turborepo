@@ -150,14 +150,9 @@ pub(super) async fn run_scan(
             .partial_cmp(&right.median_latency_ms)
             .unwrap_or(Ordering::Equal)
     });
-    retain_shortlist_with_priority(
-        &mut results,
-        &[preferred_ip, current_ip]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
-        DOWNLOAD_SHORTLIST,
-    );
+    let mut priority_ips = preferred_ips.clone();
+    priority_ips.extend(current_ip);
+    retain_shortlist_with_priority(&mut results, &priority_ips, DOWNLOAD_SHORTLIST);
     if let Some(job_id) = job_id {
         update_job(
             state,
