@@ -339,6 +339,15 @@ export const CloudflaredAPI = {
     );
     return res.data.data;
   },
+  async applyOptimizationCname(payload: {
+    hostname: string;
+  }): Promise<{ selectedCname: string; state: unknown }> {
+    const res = await apiClient.post(
+      "/cloudflared/optimization/cname",
+      payload,
+    );
+    return res.data.data;
+  },
   async fallbackOptimization(): Promise<CloudflareOptimizationFallback> {
     const res = await apiClient.post("/cloudflared/optimization/fallback");
     return res.data.data;

@@ -140,8 +140,8 @@ describe("Cloudflared API contract", () => {
         .requestBody?.required,
       false,
     );
-    assert.equal(scanBody.properties?.preferredIp?.format, undefined);
-    assert.equal(scan.properties?.preferredIp?.format, undefined);
+    assert.equal(scanBody.properties?.preferredIp?.format, "ipv4");
+    assert.equal(scan.properties?.preferredIp?.format, "ipv4");
     assert.ok(scan.required?.includes("preferredIp"));
     assert.ok(scan.required?.includes("preferredIpValidated"));
     const reconcileJob =

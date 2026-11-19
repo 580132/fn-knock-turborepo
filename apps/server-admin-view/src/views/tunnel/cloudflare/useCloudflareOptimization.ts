@@ -30,6 +30,8 @@ export const useCloudflareOptimization = ({
   const optimizationScan = ref<CloudflareOptimizationScan | null>(null);
   const selectedCandidateIp = ref("");
   const preferredCandidateIp = ref("");
+  const optimizationCnameTarget = ref("");
+  const isApplyingOptimizationCname = ref(false);
   const optimizationOfficialRanges = ref(true);
   const optimizationBuiltinIds = ref<string[]>([]);
   const optimizationCustomHostnames = ref("");
@@ -339,15 +341,39 @@ export const useCloudflareOptimization = ({
     }
   };
 
+  const applyOptimizationCname = async () => {
+    const hostname = optimizationCnameTarget.value.trim();
+    if (!hostname || !optimizationApplied.value) return;
+    isApplyingOptimizationCname.value = true;
+    try {
+      await CloudflaredAPI.applyOptimizationCname({ hostname });
+      await loadManagedState({ silent: true });
+      toast.success(
+        t("admin.cloudflareTunnel.optimization.cnameApplied", { hostname }),
+      );
+    } catch (error) {
+      toast.error(t("admin.cloudflareTunnel.optimization.cnameApplyFailed"), {
+        description: extractErrorMessage(
+          error,
+          t("admin.cloudflareTunnel.optimization.cnameApplyFailed"),
+        ),
+      });
+    } finally {
+      isApplyingOptimizationCname.value = false;
+    }
+  };
+
   const stop = () => {
     if (scanPollTimer) window.clearTimeout(scanPollTimer);
   };
 
   return {
     applyOptimization,
+    applyOptimizationCname,
     cancelOptimizationScan,
     fallbackOptimization,
     isApplyingOptimization,
+    isApplyingOptimizationCname,
     isFallingBackOptimization,
     isSavingOptimizationSources,
     isScanningOptimization,
@@ -355,6 +381,7 @@ export const useCloudflareOptimization = ({
     optimizationActionRequiredDomains,
     optimizationApplied,
     optimizationBuiltinIds,
+    optimizationCnameTarget,
     optimizationCustomHostnames,
     optimizationOfficialRanges,
     optimizationReadinessErrorCode,

@@ -3347,6 +3347,13 @@ export const koKRAdmin = {
       nextScan: "다음 전체 스캔",
       optimizedDomains: "최적화 도메인",
       lastSwitchReason: "최근 전환 이유",
+      cnameLabel: "CNAME 대상 직접 지정(선택 사항)",
+      cnamePlaceholder: "예: yx.domain.com",
+      cnameDescription:
+        "CNAME 대상을 입력하면 속도 테스트 없이 바로 적용합니다. 도메인을 IP로 해석하지 않습니다. 구성된 호스트 이름은 이 대상으로 CNAME을 통해 연결됩니다.",
+      cnameApply: "CNAME 직접 사용",
+      cnameApplied: "호스트 이름이 CNAME 대상 {hostname}을(를) 사용하도록 변경되었습니다.",
+      cnameApplyFailed: "CNAME 대상을 적용하지 못했습니다.",
       preferredIpLabel: "사용자 지정 우선 IP(선택 사항)",
       preferredIpPlaceholder: "예: 104.16.0.1",
       preferredIpDescription:

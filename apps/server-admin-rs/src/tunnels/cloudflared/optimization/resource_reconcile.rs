@@ -66,6 +66,10 @@ pub(in crate::tunnels::cloudflared) async fn reconcile_resources(
         .and_then(|value| value.get("ip"))
         .and_then(Value::as_str)
         .and_then(|value| Ipv4Addr::from_str(value).ok());
+    let selected_cname = selected
+        .as_ref()
+        .and_then(|value| value.get("cname"))
+        .and_then(Value::as_str);
     let edge_hostname = format!("fnknock-edge-{suffix}.{root}");
     match ensure_capability_probe(
         state,
@@ -78,10 +82,31 @@ pub(in crate::tunnels::cloudflared) async fn reconcile_resources(
     .await?
     {
         CapabilityProbeResult::Ready => {}
+        CapabilityProbeResult::Pending if selected_cname.is_some() => {}
         CapabilityProbeResult::Pending | CapabilityProbeResult::Unsupported => return Ok(()),
     }
 
     let publish_exact_routes = should_publish_exact_routes(ownership, force_publish);
+    if publish_exact_routes && let Some(target) = selected_cname {
+        let existing_edge_id = reset_edge_dns_for_type(api, zone_id, ownership, "CNAME").await?;
+        let existing_edge_id = existing_edge_id.as_deref();
+        let edge_dns = upsert_managed_dns(
+            api,
+            ManagedDnsRequest {
+                zone_id,
+                name: &edge_hostname,
+                record_type: "CNAME",
+                content: target,
+                proxied: false,
+                owned_id: existing_edge_id,
+                takeover: takeover.is_some_and(|items| items.contains("optimization:edge-dns")),
+                instance_id: &suffix,
+            },
+        )
+        .await?;
+        ensure_nested_object(ownership, &["optimization"]).insert("edgeDns".to_string(), edge_dns);
+        save_managed_state(state, ownership).await?;
+    }
     if publish_exact_routes && let Some(ip) = selected_ip {
         let ip_text = ip.to_string();
         let current_edge_ip = ownership
@@ -96,10 +121,7 @@ pub(in crate::tunnels::cloudflared) async fn reconcile_resources(
                     ))
                 })?;
         }
-        let existing_edge_id = ownership
-            .pointer("/optimization/edgeDns/id")
-            .and_then(Value::as_str)
-            .map(str::to_string);
+        let existing_edge_id = reset_edge_dns_for_type(api, zone_id, ownership, "A").await?;
         let edge_dns = upsert_managed_dns(
             api,
             ManagedDnsRequest {
@@ -505,8 +527,12 @@ pub(in crate::tunnels::cloudflared) async fn reconcile_resources(
                     object.remove("exactDnsTarget");
                 }
                 ensure_object(&mut host_state).insert("status".to_string(), json!("fallback"));
-            } else if let Some(ip) = selected_ip {
-                match probe_custom_hostname(&host, ip).await {
+            } else if selected_cname.is_some() || selected_ip.is_some() {
+                let route_probe = match selected_ip {
+                    Some(ip) => probe_custom_hostname(&host, ip).await,
+                    None => Ok(()), // Explicit CNAME targets bypass candidate speed and IP probes.
+                };
+                match route_probe {
                     Ok(()) => {
                         let exact_id = host_state.get("exactDnsId").and_then(Value::as_str);
                         match upsert_managed_dns(
@@ -627,6 +653,30 @@ pub(in crate::tunnels::cloudflared) async fn reconcile_resources(
         json!(!publish_exact_routes || !any_optimized),
     );
     save_managed_state(state, ownership).await
+}
+
+async fn reset_edge_dns_for_type(
+    api: &CloudflareApi,
+    zone_id: &str,
+    ownership: &mut Value,
+    desired_type: &str,
+) -> Result<Option<String>, CloudflareApiError> {
+    let Some(edge) = ownership.pointer("/optimization/edgeDns") else {
+        return Ok(None);
+    };
+    if edge.get("type").and_then(Value::as_str) == Some(desired_type) {
+        return Ok(edge.get("id").and_then(Value::as_str).map(str::to_string));
+    }
+    if let Some(id) = edge.get("id").and_then(Value::as_str) {
+        api.delete_dns_record(zone_id, id).await?;
+    }
+    if let Some(optimization) = ownership
+        .pointer_mut("/optimization")
+        .and_then(Value::as_object_mut)
+    {
+        optimization.remove("edgeDns");
+    }
+    Ok(None)
 }
 
 pub(super) fn custom_hostname_needs_activation_dns(

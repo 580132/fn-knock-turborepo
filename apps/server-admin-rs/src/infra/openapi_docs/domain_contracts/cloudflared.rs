@@ -370,7 +370,7 @@ pub(super) struct CloudflareOptimizationStateData {
     beta: bool,
     ipv4_only: bool,
     #[schema(required = true)]
-    selected: Option<CloudflareOptimizationCandidateData>,
+    selected: Option<Value>,
     fallback_active: bool,
     publish_suppressed: bool,
     #[schema(required = true)]
@@ -565,6 +565,20 @@ pub(super) struct CloudflareOptimizationDomainUpdateData {
 pub(super) struct CloudflareOptimizationApplyBodyData {
     scan_id: String,
     candidate_ip: Option<String>,
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CloudflareOptimizationCnameBodyData {
+    hostname: String,
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CloudflareOptimizationCnameData {
+    selected_cname: String,
+    #[schema(required = true)]
+    state: Option<Value>,
 }
 
 #[derive(Serialize, ToSchema)]

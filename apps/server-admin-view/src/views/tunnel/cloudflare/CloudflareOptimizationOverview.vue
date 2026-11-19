@@ -19,12 +19,15 @@ const props = defineProps<{
   presentation: CloudflareOptimizationCardPresentation;
 }>();
 const {
+  applyOptimizationCname,
   cancelOptimizationScan,
   fallbackOptimization,
+  isApplyingOptimizationCname,
   isFallingBackOptimization,
   isScanningOptimization,
   optimization,
   optimizationApplied,
+  optimizationCnameTarget,
   optimizationScanReady,
   preferredCandidateIp,
   startOptimizationScan,
@@ -99,7 +102,12 @@ const {
         {{ t("admin.cloudflareTunnel.optimization.currentIp") }}
       </div>
       <code class="mt-1 block text-sm">{{
-        optimization?.selected?.ip || "-"
+        (optimization?.selected as {
+          ip?: string;
+          cname?: string;
+        } | null)?.ip ||
+        (optimization?.selected as { cname?: string } | null)?.cname ||
+        "-"
       }}</code>
     </div>
     <div class="rounded-md border p-3">
@@ -129,7 +137,7 @@ const {
       id="optimization-preferred-ip"
       v-model="preferredCandidateIp"
       aria-describedby="optimization-preferred-ip-description"
-      inputmode="url"
+      inputmode="decimal"
       autocomplete="off"
       :disabled="isScanningOptimization"
       :placeholder="
@@ -141,6 +149,41 @@ const {
       class="text-xs text-muted-foreground"
     >
       {{ t("admin.cloudflareTunnel.optimization.preferredIpDescription") }}
+    </div>
+  </div>
+
+  <div class="grid gap-2 rounded-md border bg-muted/20 p-3 sm:max-w-xl">
+    <Label for="optimization-cname-target">
+      {{ t("admin.cloudflareTunnel.optimization.cnameLabel") }}
+    </Label>
+    <div class="flex flex-col gap-2 sm:flex-row">
+      <Input
+        id="optimization-cname-target"
+        v-model="optimizationCnameTarget"
+        aria-describedby="optimization-cname-target-description"
+        inputmode="url"
+        autocomplete="off"
+        :disabled="isApplyingOptimizationCname"
+        :placeholder="
+          t('admin.cloudflareTunnel.optimization.cnamePlaceholder')
+        "
+      />
+      <Button
+        :disabled="
+          !optimizationApplied ||
+          isApplyingOptimizationCname ||
+          !optimizationCnameTarget.trim()
+        "
+        @click="applyOptimizationCname"
+      >
+        {{ t("admin.cloudflareTunnel.optimization.cnameApply") }}
+      </Button>
+    </div>
+    <div
+      id="optimization-cname-target-description"
+      class="text-xs text-muted-foreground"
+    >
+      {{ t("admin.cloudflareTunnel.optimization.cnameDescription") }}
     </div>
   </div>
 

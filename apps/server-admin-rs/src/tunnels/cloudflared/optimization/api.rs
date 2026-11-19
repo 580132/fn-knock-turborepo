@@ -6,6 +6,7 @@ pub(crate) fn openapi_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(get_scan))
         .routes(routes!(cancel_scan))
         .routes(routes!(apply_optimization))
+        .routes(routes!(apply_cname_optimization))
         .routes(routes!(fallback_optimization))
         .routes(routes!(update_source_settings))
         .routes(routes!(update_domain_mode))
@@ -178,9 +179,16 @@ async fn start_scan(
         );
     }
     let requested_preferred_ip = body.as_ref().and_then(|body| body.preferred_ip.as_deref());
-    let preferred_target = match normalize_preferred_target(requested_preferred_ip, &bundled_cloudflare_prefixes()) {
-        Ok(value) => value,
-        Err(error) => return response::error(StatusCode::BAD_REQUEST, error),
+    let preferred_ip = if requested_preferred_ip.is_some() {
+        // Keep task creation independent of Cloudflare's availability. The
+        // background scan fetches the current list and revalidates this IP.
+        let prefixes = bundled_cloudflare_prefixes();
+        match normalize_preferred_ip(requested_preferred_ip, &prefixes) {
+            Ok(value) => value,
+            Err(error) => return response::error(StatusCode::BAD_REQUEST, error),
+        }
+    } else {
+        None
     };
     let id = uuid::Uuid::new_v4().to_string();
     let job = json!({
@@ -195,7 +203,7 @@ async fn start_scan(
         "cancelRequested": false,
         "candidates": [],
         "recommendedIp": Value::Null,
-        "preferredIp": preferred_target.as_ref().map(PreferredTarget::display),
+        "preferredIp": preferred_ip.map(|ip| ip.to_string()),
         "preferredIpValidated": Value::Null,
         "vantage": Value::Null,
         "sourceWarnings": [],
@@ -251,7 +259,7 @@ async fn start_scan(
         .await;
         let result = time::timeout(
             Duration::from_secs(180),
-            run_scan(&scan_state, Some(&scan_id), preferred_target.as_ref()),
+            run_scan(&scan_state, Some(&scan_id), preferred_ip),
         )
         .await;
         match result {
@@ -270,7 +278,7 @@ async fn start_scan(
             Ok(Ok(result)) => {
                 let completed_at_ms = time_utils::now_ms();
                 let (recommended, preferred_ip_validated) =
-                    select_recommended_target(&result.candidates, preferred_target.as_ref());
+                    select_recommended_candidate(&result.candidates, preferred_ip);
                 let mut runtime = load_runtime(&scan_state).await;
                 let runtime_object = ensure_object(&mut runtime);
                 runtime_object.insert("lastVantage".to_string(), result.vantage.clone());
@@ -519,6 +527,64 @@ async fn apply_optimization(
         return api_error_response(error);
     }
     response::ok(json!({ "selected": selected, "state": ownership.get("optimization") }))
+        .into_response()
+}
+
+#[utoipa::path(post, path = "/api/admin/cloudflared/optimization/cname", tag = "cloudflared", operation_id = "post_api_admin_cloudflared_optimization_cname", responses((status = 200, description = "Applied direct CNAME optimization target")))]
+async fn apply_cname_optimization(
+    State(state): State<AppState>,
+    Json(body): Json<ApplyOptimizationCnameRequest>,
+) -> Response {
+    let hostname = match normalize_candidate_hostname(&body.hostname) {
+        Ok(value) => value,
+        Err(error) => return response::error(StatusCode::BAD_REQUEST, error),
+    };
+    let _guard = match acquire_http_manage_lock(&state).await {
+        Ok(guard) => guard,
+        Err(response) => return response,
+    };
+    let managed = load_managed_config(&state).await;
+    if !optimization_is_enabled(&managed) {
+        return response::error(
+            StatusCode::CONFLICT,
+            "Enable optimization before selecting a CNAME target",
+        );
+    }
+    let api = match api_for_background(&state).await {
+        Ok(Some(api)) => api,
+        Ok(None) => {
+            return response::error(
+                StatusCode::CONFLICT,
+                "Cloudflare API Token is not configured",
+            );
+        }
+        Err(error) => return api_error_response(error),
+    };
+    let mut ownership = load_managed_state(&state).await;
+    let previous = ownership.clone();
+    let selected =
+        json!({"cname": hostname, "source": "manual-cname", "selectedAt": time_utils::now_iso()});
+    let optimization = ensure_nested_object(&mut ownership, &["optimization"]);
+    optimization.insert("selected".to_string(), selected.clone());
+    optimization.insert("fallbackActive".to_string(), json!(false));
+    optimization.insert("publishSuppressed".to_string(), json!(false));
+    if let Err(error) = save_managed_state(&state, &ownership).await {
+        return api_error_response(error);
+    }
+    if let Err(error) =
+        reconcile_resources(&state, &api, &managed, &mut ownership, true, None).await
+    {
+        let _ = save_managed_state(&state, &previous).await;
+        return api_error_response(error);
+    }
+    let mut runtime = load_runtime(&state).await;
+    let object = ensure_object(&mut runtime);
+    object.remove("pendingCandidate");
+    object.insert("lastSwitchReason".to_string(), json!("manual-cname"));
+    if let Err(error) = save_runtime(&state, &runtime).await {
+        return api_error_response(error);
+    }
+    response::ok(json!({"selectedCname": hostname, "state": ownership.get("optimization")}))
         .into_response()
 }
 

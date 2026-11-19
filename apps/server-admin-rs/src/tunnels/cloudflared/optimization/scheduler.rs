@@ -42,6 +42,14 @@ pub(super) async fn scheduled_tick(state: &AppState) -> Result<(), CloudflareApi
         save_managed_state(state, &ownership).await?;
     }
     reconcile_resources(state, &api, &managed, &mut ownership, false, None).await?;
+    if ownership.pointer("/optimization/selected/cname").is_some() {
+        // A manually configured CNAME is not a measured IP candidate: never
+        // schedule speed tests or automatic switches for it.
+        let object = ensure_object(&mut runtime);
+        object.remove("pendingCandidate");
+        object.insert("lastError".to_string(), Value::Null);
+        return save_runtime(state, &runtime).await;
+    }
     let now = time_utils::now_ms();
 
     let last_health = runtime

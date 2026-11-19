@@ -3070,8 +3070,15 @@ export const zhHantAdmin = {
       nextScan: "下次完整掃描",
       optimizedDomains: "優選網域",
       lastSwitchReason: "最近切換原因",
+      cnameLabel: "直接指定 CNAME（選填）",
+      cnamePlaceholder: "例如：yx.domain.com",
+      cnameDescription:
+        "填寫 CNAME 目標網域後直接套用，不會測速，也不會將網域解析為 IP。已設定的優選網域將透過 CNAME 指向該目標。",
+      cnameApply: "直接使用 CNAME",
+      cnameApplied: "已改為透過 CNAME 指向 {hostname}。",
+      cnameApplyFailed: "套用 CNAME 目標失敗。",
       preferredIpLabel: "自訂優選 IP（選填）",
-      preferredIpPlaceholder: "例如：104.16.0.1 或 cf.example.com",
+      preferredIpPlaceholder: "例如：104.16.0.1",
       preferredIpDescription:
         "僅接受 Cloudflare 官方 IPv4 網段內的位址。該位址會強制進入測速候選清單，但仍須通過下載、業務網域 TLS、SNI 與 Ray ID 驗證。留空則自動推薦。",
       preferredIpInvalid: "請輸入有效的 IPv4 位址。",

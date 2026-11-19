@@ -4572,6 +4572,7 @@
       "CloudflareOptimizationScanBodyData": {
         "properties": {
           "preferredIp": {
+            "format": "ipv4",
             "type": [
               "string",
               "null"
@@ -4641,6 +4642,7 @@
             "type": "string"
           },
           "preferredIp": {
+            "format": "ipv4",
             "type": [
               "string",
               "null"

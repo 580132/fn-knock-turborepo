@@ -1001,6 +1001,8 @@ struct BackupImportResultData {
     CloudflareOptimizationDomainUpdateData,
     CloudflareOptimizationApplyBodyData,
     CloudflareOptimizationApplyData,
+    CloudflareOptimizationCnameBodyData,
+    CloudflareOptimizationCnameData,
     CloudflareOptimizationFallbackData,
     FrpcTcpItemData,
     FrpcInstanceSummaryData,
@@ -2624,7 +2626,12 @@ pub(super) fn components() -> Map<String, Value> {
             ],
         );
     }
-    // preferredIp also accepts a hostname resolved to verified Cloudflare IPv4 candidates.
+    for (schema, property) in [
+        ("CloudflareOptimizationScanBodyData", "preferredIp"),
+        ("CloudflareOptimizationScanData", "preferredIp"),
+    ] {
+        set_property_metadata(&mut schemas, schema, property, "format", json!("ipv4"));
+    }
     set_property_metadata(
         &mut schemas,
         "CloudflareOptimizationCandidateSourcesData",
@@ -2632,7 +2639,7 @@ pub(super) fn components() -> Map<String, Value> {
         "const",
         json!("extract-ip-only"),
     );
-    for (property, value) in [("beta", json!(true)), ("ipv4Only", json!(true))] {
+    for (property, value) in [("beta", json!(true))] {
         set_property_metadata(
             &mut schemas,
             "CloudflareOptimizationStateData",
@@ -4604,6 +4611,12 @@ const OPERATIONS: &[DomainOperation] = &[
         path: "/api/admin/cloudflared/optimization/apply",
         request: Some("CloudflareOptimizationApplyBodyData"),
         response: ResponseSchema::Ref("CloudflareOptimizationApplyData"),
+    },
+    DomainOperation {
+        method: "post",
+        path: "/api/admin/cloudflared/optimization/cname",
+        request: Some("CloudflareOptimizationCnameBodyData"),
+        response: ResponseSchema::Ref("CloudflareOptimizationCnameData"),
     },
     DomainOperation {
         method: "post",

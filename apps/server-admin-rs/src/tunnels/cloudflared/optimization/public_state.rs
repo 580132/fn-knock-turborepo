@@ -92,7 +92,7 @@ pub(in crate::tunnels::cloudflared) async fn public_state(
     json!({
         "enabled": managed.get("optimizationEnabled").and_then(Value::as_bool).unwrap_or(false),
         "beta": true,
-        "ipv4Only": true,
+        "ipv4Only": ownership.pointer("/optimization/selected/cname").is_none(),
         "selected": ownership.pointer("/optimization/selected").cloned().unwrap_or(Value::Null),
         "fallbackActive": ownership.pointer("/optimization/fallbackActive").and_then(Value::as_bool).unwrap_or(true),
         "publishSuppressed": ownership.pointer("/optimization/publishSuppressed").and_then(Value::as_bool).unwrap_or(false),

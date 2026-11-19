@@ -3365,6 +3365,13 @@ export const jaJPAdmin = {
       nextScan: "次回の完全スキャン",
       optimizedDomains: "最適化ドメイン",
       lastSwitchReason: "直近の切り替え理由",
+      cnameLabel: "CNAME ターゲットを直接指定（任意）",
+      cnamePlaceholder: "例：yx.domain.com",
+      cnameDescription:
+        "CNAME ターゲットを入力すると、速度テストを行わずに直接適用します。ドメインを IP に解決することはありません。設定済みのホスト名はこのターゲットへ CNAME で転送されます。",
+      cnameApply: "CNAME を直接使用",
+      cnameApplied: "ホスト名を CNAME ターゲット {hostname} に切り替えました。",
+      cnameApplyFailed: "CNAME ターゲットの適用に失敗しました。",
       preferredIpLabel: "カスタム優先 IP（任意）",
       preferredIpPlaceholder: "例：104.16.0.1",
       preferredIpDescription:
