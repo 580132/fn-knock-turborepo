@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import {
   LoaderCircle,
   RefreshCw,
@@ -33,6 +34,14 @@ const {
   startOptimizationScan,
   t,
 } = props.controller;
+
+const selectedOptimizationTarget = computed(() => {
+  const selected = optimization.value?.selected as
+    | { ip?: string; cname?: string }
+    | null
+    | undefined;
+  return selected?.ip || selected?.cname || "-";
+});
 </script>
 
 <template>
@@ -102,12 +111,7 @@ const {
         {{ t("admin.cloudflareTunnel.optimization.currentIp") }}
       </div>
       <code class="mt-1 block text-sm">{{
-        (optimization?.selected as {
-          ip?: string;
-          cname?: string;
-        } | null)?.ip ||
-        (optimization?.selected as { cname?: string } | null)?.cname ||
-        "-"
+        selectedOptimizationTarget
       }}</code>
     </div>
     <div class="rounded-md border p-3">
