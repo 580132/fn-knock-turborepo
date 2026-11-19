@@ -1,0 +1,106 @@
+name: Docker image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: "22.22.3"
+  NPM_VERSION: "10.8.2"
+
+jobs:
+  build-amd64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout fn-knock
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Resolve gateway commit
+        id: gateway
+        shell: bash
+        run: |
+          sha="$(node -p 'require("./version.json").gatewayCommit')"
+          echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
+          echo "FN_KNOCK_GO_SOURCE_COMMIT=${sha}" >> "${GITHUB_ENV}"
+          echo "FN_KNOCK_GATEWAY_COMMIT=${sha}" >> "${GITHUB_ENV}"
+
+      - name: Checkout frozen Go gateway
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: kci-lnk/Go-Reauth-Proxy
+          path: Go-Reauth-Proxy
+          ref: ${{ steps.gateway.outputs.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: Go-Reauth-Proxy/go.mod
+          cache-dependency-path: Go-Reauth-Proxy/go.sum
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          npm install --global "npm@${NPM_VERSION}"
+          npm ci
+
+      - name: Prepare Docker build context
+        shell: bash
+        env:
+          FN_KNOCK_GO_REAUTH_PROXY_DIR: ${{ github.workspace }}/Go-Reauth-Proxy
+          FN_KNOCK_GO_SKIP_TESTS: "1"
+          FN_KNOCK_MUSL_ARCHES: amd64
+          FN_KNOCK_RUNTIME_GATEWAY_ARCHES: amd64
+          FN_KNOCK_FORCE_FRONTEND_REBUILD: "1"
+        run: |
+          bash ./scripts/fn-knock-prepare-artifacts.sh docker
+
+      - name: Compute image reference
+        id: image
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY}"
+          image="$(printf '%s' "${image}" | tr '[:upper:]' '[:lower:]')"
+          version="$(node -p 'require("./version.json").version')"
+          echo "name=${image}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "tags=${image}:${version}-cname,${image}:main" >> "${GITHUB_OUTPUT}"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          cache-from: type=gha,scope=docker-amd64
+          cache-to: type=gha,mode=max,scope=docker-amd64
