@@ -71,16 +71,39 @@ jobs:
           npm install --global "npm@${NPM_VERSION}"
           npm ci
 
-      - name: Prepare Docker build context
+      - name: Build runtime assets
         shell: bash
         env:
           FN_KNOCK_GO_REAUTH_PROXY_DIR: ${{ github.workspace }}/Go-Reauth-Proxy
           FN_KNOCK_GO_SKIP_TESTS: "1"
-          FN_KNOCK_MUSL_ARCHES: amd64
           FN_KNOCK_RUNTIME_GATEWAY_ARCHES: amd64
+          FN_KNOCK_BUILD_RUST_BACKEND: "0"
           FN_KNOCK_FORCE_FRONTEND_REBUILD: "1"
         run: |
-          bash ./scripts/fn-knock-prepare-artifacts.sh docker
+          bash ./scripts/assemble-runtime.sh dist/fn-knock-artifacts/runtime
+
+      - name: Build musl Rust backend
+        shell: bash
+        env:
+          FN_KNOCK_GATEWAY_COMMIT: ${{ steps.gateway.outputs.sha }}
+        run: |
+          bash ./scripts/build-rust-backend.sh musl amd64 \
+            "dist/fn-knock-artifacts/musl-rust-backends/server-admin-rs-linux-amd64"
+
+      - name: Stage Docker build context
+        shell: bash
+        run: |
+          runtime="dist/fn-knock-artifacts/runtime"
+          rm -rf apps/fn-knock/app/ui/www apps/fn-knock/app/server-auth-view/dist
+          mkdir -p apps/fn-knock/app/ui/www apps/fn-knock/app/server-auth-view/dist deploy/docker/rust-backends
+          cp -a "${runtime}/ui/www/." apps/fn-knock/app/ui/www/
+          cp -a "${runtime}/server-auth-view/dist/." apps/fn-knock/app/server-auth-view/dist/
+          cp "${runtime}/server/go-reauth-proxy-linux-amd64" apps/fn-knock/app/server/
+          cp "dist/fn-knock-artifacts/musl-rust-backends/server-admin-rs-linux-amd64" \
+            deploy/docker/rust-backends/server-admin-rs-linux-amd64
+          chmod 755 apps/fn-knock/app/server/go-reauth-proxy-linux-amd64 \
+            deploy/docker/rust-backends/server-admin-rs-linux-amd64
+          ls -l deploy/docker/rust-backends apps/fn-knock/app/server/go-reauth-proxy-linux-amd64
 
       - name: Compute image reference
         id: image
