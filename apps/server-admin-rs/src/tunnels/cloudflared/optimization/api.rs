@@ -178,16 +178,9 @@ async fn start_scan(
         );
     }
     let requested_preferred_ip = body.as_ref().and_then(|body| body.preferred_ip.as_deref());
-    let preferred_ip = if requested_preferred_ip.is_some() {
-        // Keep task creation independent of Cloudflare's availability. The
-        // background scan fetches the current list and revalidates this IP.
-        let prefixes = bundled_cloudflare_prefixes();
-        match normalize_preferred_ip(requested_preferred_ip, &prefixes) {
-            Ok(value) => value,
-            Err(error) => return response::error(StatusCode::BAD_REQUEST, error),
-        }
-    } else {
-        None
+    let preferred_target = match normalize_preferred_target(requested_preferred_ip, &bundled_cloudflare_prefixes()) {
+        Ok(value) => value,
+        Err(error) => return response::error(StatusCode::BAD_REQUEST, error),
     };
     let id = uuid::Uuid::new_v4().to_string();
     let job = json!({
@@ -202,7 +195,7 @@ async fn start_scan(
         "cancelRequested": false,
         "candidates": [],
         "recommendedIp": Value::Null,
-        "preferredIp": preferred_ip.map(|ip| ip.to_string()),
+        "preferredIp": preferred_target.as_ref().map(PreferredTarget::display),
         "preferredIpValidated": Value::Null,
         "vantage": Value::Null,
         "sourceWarnings": [],
@@ -258,7 +251,7 @@ async fn start_scan(
         .await;
         let result = time::timeout(
             Duration::from_secs(180),
-            run_scan(&scan_state, Some(&scan_id), preferred_ip),
+            run_scan(&scan_state, Some(&scan_id), preferred_target.as_ref()),
         )
         .await;
         match result {
@@ -277,7 +270,7 @@ async fn start_scan(
             Ok(Ok(result)) => {
                 let completed_at_ms = time_utils::now_ms();
                 let (recommended, preferred_ip_validated) =
-                    select_recommended_candidate(&result.candidates, preferred_ip);
+                    select_recommended_target(&result.candidates, preferred_target.as_ref());
                 let mut runtime = load_runtime(&scan_state).await;
                 let runtime_object = ensure_object(&mut runtime);
                 runtime_object.insert("lastVantage".to_string(), result.vantage.clone());

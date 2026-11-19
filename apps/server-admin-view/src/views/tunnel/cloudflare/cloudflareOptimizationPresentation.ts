@@ -238,7 +238,7 @@ export const optimizationPreferredIpErrorLabel = (
   message: string,
   t: Translate,
 ) => {
-  if (message === "Preferred IP must be a valid IPv4 address") {
+  if (message === "Preferred target must be a valid IPv4 address or hostname" || message === "Preferred IP must be a valid IPv4 address") {
     return t("admin.cloudflareTunnel.optimization.preferredIpInvalid");
   }
   if (

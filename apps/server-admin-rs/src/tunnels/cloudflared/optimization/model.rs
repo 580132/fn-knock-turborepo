@@ -135,6 +135,21 @@ pub(super) struct OptimizationDomainSettings {
     pub(super) external_hostnames: Vec<String>,
 }
 
+#[derive(Clone, Debug)]
+pub(super) enum PreferredTarget {
+    Ip(Ipv4Addr),
+    Hostname(String),
+}
+
+impl PreferredTarget {
+    pub(super) fn display(&self) -> String {
+        match self {
+            Self::Ip(ip) => ip.to_string(),
+            Self::Hostname(hostname) => hostname.clone(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct StartOptimizationScanRequest {

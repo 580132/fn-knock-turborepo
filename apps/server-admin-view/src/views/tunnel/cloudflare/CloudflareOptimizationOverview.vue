@@ -129,7 +129,7 @@ const {
       id="optimization-preferred-ip"
       v-model="preferredCandidateIp"
       aria-describedby="optimization-preferred-ip-description"
-      inputmode="decimal"
+      inputmode="url"
       autocomplete="off"
       :disabled="isScanningOptimization"
       :placeholder="

@@ -3,12 +3,19 @@ use super::*;
 pub(super) async fn run_scan(
     state: &AppState,
     job_id: Option<&str>,
-    preferred_ip: Option<Ipv4Addr>,
+    preferred_target: Option<&PreferredTarget>,
 ) -> Result<OptimizationScanResult, CloudflareApiError> {
     let settings = load_source_settings(state).await?;
     let source_fingerprint = source_settings_fingerprint(&settings);
     let prefixes = load_cloudflare_prefixes(state).await;
-    let preferred_ip = preferred_ip.filter(|ip| candidate_ip_is_cloudflare(*ip, &prefixes));
+    let preferred_ips = match preferred_target {
+        Some(PreferredTarget::Ip(ip)) if candidate_ip_is_cloudflare(*ip, &prefixes) => vec![*ip],
+        Some(PreferredTarget::Hostname(hostname)) => match build_doh_client() {
+            Ok(client) => resolve_candidate_hostname(&client, hostname, &prefixes).await.ips,
+            Err(_) => Vec::new(),
+        },
+        _ => Vec::new(),
+    };
     let ownership = load_managed_state(state).await;
     let current_ip = ownership
         .pointer("/optimization/selected/ip")
@@ -23,7 +30,7 @@ pub(super) async fn run_scan(
         }
         merge_priority_candidate_seed(&mut seeds, ip, "current");
     }
-    if let Some(ip) = preferred_ip {
+    for ip in preferred_ips.iter().copied().take(8) {
         if seeds.is_empty() {
             resolution_path = "preferred-ip".to_string();
         }
@@ -440,6 +447,39 @@ pub(super) fn normalize_preferred_ip(
         return Err("Preferred IP must belong to an official Cloudflare IPv4 range".to_string());
     }
     Ok(Some(ip))
+}
+
+pub(super) fn normalize_preferred_target(
+    value: Option<&str>,
+    prefixes: &[Ipv4Net],
+) -> Result<Option<PreferredTarget>, String> {
+    let Some(value) = value.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(None);
+    };
+    if value.parse::<Ipv4Addr>().is_ok() {
+        return normalize_preferred_ip(Some(value), prefixes).map(|ip| ip.map(PreferredTarget::Ip));
+    }
+    normalize_candidate_hostname(value)
+        .map(PreferredTarget::Hostname)
+        .map(Some)
+        .map_err(|_| "Preferred target must be a valid IPv4 address or hostname".to_string())
+}
+
+pub(super) fn select_recommended_target(
+    candidates: &[OptimizationCandidate],
+    target: Option<&PreferredTarget>,
+) -> (Option<String>, Option<bool>) {
+    match target {
+        Some(PreferredTarget::Ip(ip)) => select_recommended_candidate(candidates, Some(*ip)),
+        Some(PreferredTarget::Hostname(_)) => {
+            let selected = candidates.iter().find(|candidate| {
+                candidate.business_validated
+                    && candidate.source_types.iter().any(|source| source == "preferred-ip")
+            });
+            (selected.map(|candidate| candidate.ip.clone()), Some(selected.is_some()))
+        }
+        None => select_recommended_candidate(candidates, None),
+    }
 }
 
 pub(super) fn select_recommended_candidate(

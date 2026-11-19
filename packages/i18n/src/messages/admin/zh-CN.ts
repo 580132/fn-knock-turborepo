@@ -3127,17 +3127,17 @@ export const zhCNAdmin = {
       nextScan: "下次完整扫描",
       optimizedDomains: "优选域名",
       lastSwitchReason: "最近切换原因",
-      preferredIpLabel: "自定义优选 IP（可选）",
-      preferredIpPlaceholder: "例如：104.16.0.1",
+      preferredIpLabel: "自定义优选 IP 或 CNAME（可选）",
+      preferredIpPlaceholder: "例如：104.16.0.1 或 cf.example.com",
       preferredIpDescription:
-        "仅接受 Cloudflare 官方 IPv4 网段内的地址。该地址会强制进入测速短名单，但仍须通过下载、业务域名 TLS、SNI 与 Ray ID 验证。留空则自动推荐。",
-      preferredIpInvalid: "请输入有效的 IPv4 地址。",
+        "IP 须属于 Cloudflare 官方 IPv4 网段；CNAME 域名将解析为 Cloudflare IPv4 候选。候选会进入测速短名单，但仍须通过下载、业务域名 TLS、SNI 与 Ray ID 验证。留空则自动推荐。",
+      preferredIpInvalid: "请输入有效的 IPv4 地址或 CNAME 域名。",
       preferredIpOutsideCloudflare:
         "该地址不属于 Cloudflare 官方 IPv4 网段，不能作为优选候选。",
       preferredIpValidated:
-        "自定义 IP {ip} 已通过全部验证，并已设为本次推荐候选。",
+        "自定义目标 {ip} 已通过全部验证，并已设为本次推荐候选。",
       preferredIpRejected:
-        "自定义 IP {ip} 未通过 Cloudflare 网段复核、延迟、下载或业务域名验证，因此未自动选择。你仍可从下方已验证候选中手动选择。",
+        "自定义目标 {ip} 未通过 Cloudflare 网段复核、延迟、下载或业务域名验证，因此未自动选择。你仍可从下方已验证候选中手动选择。",
       startScan: "开始测速",
       cancelScan: "取消测速",
       fallback: "一键回退",

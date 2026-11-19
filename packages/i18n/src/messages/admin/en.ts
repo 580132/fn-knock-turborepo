@@ -3374,17 +3374,17 @@ export const enAdmin = {
       nextScan: "Next full scan",
       optimizedDomains: "Optimized domains",
       lastSwitchReason: "Last switch reason",
-      preferredIpLabel: "Custom preferred IP (optional)",
-      preferredIpPlaceholder: "For example: 104.16.0.1",
+      preferredIpLabel: "Custom preferred IP or CNAME (optional)",
+      preferredIpPlaceholder: "For example: 104.16.0.1 or cf.example.com",
       preferredIpDescription:
-        "Only addresses in Cloudflare's official IPv4 ranges are accepted. The address is forced into the speed-test shortlist, but must still pass download, business-hostname TLS, SNI, and Ray ID validation. Leave blank for automatic selection.",
-      preferredIpInvalid: "Enter a valid IPv4 address.",
+        "IPs must be in Cloudflare's official IPv4 ranges; CNAME hostnames are resolved to Cloudflare IPv4 candidates. Candidates enter the speed-test shortlist, but must still pass download, business-hostname TLS, SNI, and Ray ID validation. Leave blank for automatic selection.",
+      preferredIpInvalid: "Enter a valid IPv4 address or CNAME hostname.",
       preferredIpOutsideCloudflare:
         "This address is outside Cloudflare's official IPv4 ranges and cannot be used as an optimization candidate.",
       preferredIpValidated:
-        "Custom IP {ip} passed all checks and is the recommended candidate for this scan.",
+        "Custom target {ip} passed all checks and is the recommended candidate for this scan.",
       preferredIpRejected:
-        "Custom IP {ip} failed Cloudflare range revalidation, latency, download, or business-hostname validation and was not selected automatically. You can still choose a verified candidate below.",
+        "Custom target {ip} failed Cloudflare range revalidation, latency, download, or business-hostname validation and was not selected automatically. You can still choose a verified candidate below.",
       startScan: "Start speed test",
       cancelScan: "Cancel scan",
       fallback: "Fall back now",

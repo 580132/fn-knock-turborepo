@@ -3071,7 +3071,7 @@ export const zhHantAdmin = {
       optimizedDomains: "優選網域",
       lastSwitchReason: "最近切換原因",
       preferredIpLabel: "自訂優選 IP（選填）",
-      preferredIpPlaceholder: "例如：104.16.0.1",
+      preferredIpPlaceholder: "例如：104.16.0.1 或 cf.example.com",
       preferredIpDescription:
         "僅接受 Cloudflare 官方 IPv4 網段內的位址。該位址會強制進入測速候選清單，但仍須通過下載、業務網域 TLS、SNI 與 Ray ID 驗證。留空則自動推薦。",
       preferredIpInvalid: "請輸入有效的 IPv4 位址。",

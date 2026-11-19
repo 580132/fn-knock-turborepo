@@ -2624,12 +2624,7 @@ pub(super) fn components() -> Map<String, Value> {
             ],
         );
     }
-    for (schema, property) in [
-        ("CloudflareOptimizationScanBodyData", "preferredIp"),
-        ("CloudflareOptimizationScanData", "preferredIp"),
-    ] {
-        set_property_metadata(&mut schemas, schema, property, "format", json!("ipv4"));
-    }
+    // preferredIp also accepts a hostname resolved to verified Cloudflare IPv4 candidates.
     set_property_metadata(
         &mut schemas,
         "CloudflareOptimizationCandidateSourcesData",

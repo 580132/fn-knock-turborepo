@@ -322,6 +322,17 @@ fn preferred_ip_must_be_a_cloudflare_ipv4_address() {
 }
 
 #[test]
+fn preferred_hostname_is_validated_and_only_verified_candidates_are_recommended() {
+    let prefixes = bundled_cloudflare_prefixes();
+    assert!(matches!(
+        normalize_preferred_target(Some(" CF.Example.com. "), &prefixes),
+        Ok(Some(PreferredTarget::Hostname(hostname))) if hostname == "cf.example.com"
+    ));
+    assert!(normalize_preferred_target(Some("https://example.com"), &prefixes).is_err());
+    assert!(normalize_preferred_target(Some("192.0.2.1"), &prefixes).is_err());
+}
+
+#[test]
 fn current_and_preferred_ips_are_kept_in_the_download_shortlist() {
     let candidate = |index: u8| OptimizationCandidate {
         ip: Ipv4Addr::new(104, 16, 0, index).to_string(),
