@@ -82,6 +82,14 @@ jobs:
         run: |
           bash ./scripts/assemble-runtime.sh dist/fn-knock-artifacts/runtime
 
+      - name: Build static Go gateway for Alpine
+        shell: bash
+        env:
+          FN_KNOCK_GO_SKIP_TESTS: "1"
+        run: |
+          bash ./scripts/build-go-release.sh "${GITHUB_WORKSPACE}/Go-Reauth-Proxy" \
+            "${GITHUB_WORKSPACE}/dist/fn-knock-go-release"
+
       - name: Build musl Rust backend
         shell: bash
         env:
@@ -98,7 +106,15 @@ jobs:
           mkdir -p apps/fn-knock/app/ui/www apps/fn-knock/app/server-auth-view/dist apps/fn-knock/app/server deploy/docker/rust-backends
           cp -a "${runtime}/ui/www/." apps/fn-knock/app/ui/www/
           cp -a "${runtime}/server-auth-view/dist/." apps/fn-knock/app/server-auth-view/dist/
-          cp "${runtime}/server/go-reauth-proxy-linux-amd64" apps/fn-knock/app/server/
+          cp "dist/fn-knock-go-release/go-reauth-proxy-linux-amd64" apps/fn-knock/app/server/
+          if readelf -l apps/fn-knock/app/server/go-reauth-proxy-linux-amd64 | grep -q INTERP; then
+            echo 'Go gateway unexpectedly requires a dynamic linker' >&2
+            exit 1
+          fi
+          if readelf -d apps/fn-knock/app/server/go-reauth-proxy-linux-amd64 | grep -q '(NEEDED)'; then
+            echo 'Go gateway unexpectedly requires dynamic libraries' >&2
+            exit 1
+          fi
           cp "dist/fn-knock-artifacts/musl-rust-backends/server-admin-rs-linux-amd64" \
             deploy/docker/rust-backends/server-admin-rs-linux-amd64
           chmod 755 apps/fn-knock/app/server/go-reauth-proxy-linux-amd64 \
@@ -133,3 +149,15 @@ jobs:
           tags: ${{ steps.image.outputs.tags }}
           cache-from: type=gha,scope=docker-amd64
           cache-to: type=gha,mode=max,scope=docker-amd64
+
+      - name: Smoke-test gateway executable in Alpine image
+        shell: bash
+        run: |
+          image="${{ steps.image.outputs.name }}:main"
+          docker pull "${image}"
+          docker run --rm --entrypoint /bin/sh "${image}" -c '
+            /opt/fn-knock/bin/go-reauth-proxy --help >/tmp/gateway-help 2>&1
+            status=$?
+            cat /tmp/gateway-help
+            if [ "$status" -eq 126 ] || [ "$status" -eq 127 ]; then exit 1; fi
+          '
