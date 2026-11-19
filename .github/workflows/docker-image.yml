@@ -95,7 +95,7 @@ jobs:
         run: |
           runtime="dist/fn-knock-artifacts/runtime"
           rm -rf apps/fn-knock/app/ui/www apps/fn-knock/app/server-auth-view/dist
-          mkdir -p apps/fn-knock/app/ui/www apps/fn-knock/app/server-auth-view/dist deploy/docker/rust-backends
+          mkdir -p apps/fn-knock/app/ui/www apps/fn-knock/app/server-auth-view/dist apps/fn-knock/app/server deploy/docker/rust-backends
           cp -a "${runtime}/ui/www/." apps/fn-knock/app/ui/www/
           cp -a "${runtime}/server-auth-view/dist/." apps/fn-knock/app/server-auth-view/dist/
           cp "${runtime}/server/go-reauth-proxy-linux-amd64" apps/fn-knock/app/server/
